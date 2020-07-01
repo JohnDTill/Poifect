@@ -20,6 +20,8 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    hashsearch.h \
+    hashwrite.h \
     mainwindow.h
 
 FORMS += \

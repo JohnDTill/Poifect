@@ -1,0 +1,22 @@
+#Qt
+*.pro.user*
+build*
+*moc_*.cpp
+*moc_*.h
+*resource.cpp
+*.qmake.stash
+
+#C++
+*.lib
+*.a
+*.pdb
+*.o
+
+#WASM generation
+*Makefile
+ExampleApp_Wasm/*.h
+ExampleApp_Wasm/*.cpp
+ExampleApp_Wasm/*.js
+ExampleApp_Wasm/*.wasm
+ExampleApp_Wasm/*.html
+ExampleApp_Wasm/*.svg
