@@ -13,9 +13,21 @@ std::string getHashFunctionSource(const SearchResult& result){
            "    " + result.type + " hash = 0;\n"
            "\n"
            "    for(const char& ch : key){\n";
-    if(c[0] != 0) out += "        hash += " + std::to_string(c[0]) + "*ch;\n";
-    if(c[1] != 0) out += "        hash *= " + std::to_string(c[1]) + "*ch;\n";
-    if(c[2] != 0) out += "        hash ^= "  + std::to_string(c[2]) + "*ch;\n";
+    if(c[0] != 0){
+        out += "        hash += ";
+        if(c[0]!=1) out += std::to_string(c[0]) + "*";
+        out += "ch;\n";
+    }
+    if(c[1] != 0){
+        out += "        hash *= ";
+        if(c[1]!=1) out += std::to_string(c[1]) + "*";
+        out += "ch;\n";
+    }
+    if(c[2] != 0){
+        out += "        hash ^= ";
+        if(c[2]!=1) out += std::to_string(c[2]) + "*";
+        out += "ch;\n";
+    }
     if(c[3] != 0 || c[4] != 0 || c[5] != 0){
         out += "        hash ^= ";
         bool add = false;
@@ -32,7 +44,8 @@ std::string getHashFunctionSource(const SearchResult& result){
 
         if(c[3] != 0){
             if(add) out += " + ";
-            out += "hash*" + std::to_string(c[3]);
+            out += "hash";
+            if(c[3]!=1) out += "*" + std::to_string(c[3]);
         }
         out += ";\n";
     }
