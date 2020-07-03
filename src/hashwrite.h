@@ -80,10 +80,7 @@ static std::string getHashFunctionSource(const SearchResult& result, size_t tabl
         bool power_of_2 = table_sze != 0 && (table_sze & (table_sze-1)) == 0;
 
         if(power_of_2){
-            int log2;
-            size_t x = table_sze;
-            for (log2=0; x != 1; x>>=1,log2++);
-            out += " & " + std::to_string(log2-1);
+            out += " & " + std::to_string(table_sze-1);
         }else{
             out += " % " + std::to_string(table_sze);
         }
