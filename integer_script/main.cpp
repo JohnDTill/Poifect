@@ -6,6 +6,7 @@ typedef uint32_t Hash;
 
 static constexpr int num_keys = 125;
 static constexpr Hash moduland_max = 512;
+static constexpr Hash moduland_min = 256;
 static Hash moduland;
 static constexpr Key keys[num_keys] = {8501 ,
                               64 ,
@@ -145,6 +146,14 @@ static Hash c[digits];
 static constexpr Hash c_min[digits] = {0, 0, 0, 0, 0, 0};
 static constexpr Hash c_max[digits] = {512, 31, 31, 31, 512, 31};
 
+static uint8_t checkNonzeroCoeffs(){
+    uint8_t active_coeffs = 0;
+    uint8_t i = digits;
+    while(i --> 0) active_coeffs += (c[i]!=0);
+
+    return active_coeffs;
+}
+
 Hash hash(Key a){
     a = (a ^ c[0]) ^ (a >> c[1]);
     a = a + (a << c[2]);
@@ -195,22 +204,36 @@ int checkCollisions(){
 }
 
 static constexpr int dims = 3;
+static constexpr int num_iter = 5;
 static int active_dims[dims];
-static Hash min_ci[dims];
-
-static int collisions = std::numeric_limits<uint16_t>::max();
+static Hash best_ci[dims];
+static Hash best_moduland = std::numeric_limits<Hash>::max();
+static uint16_t best_collisions = std::numeric_limits<uint16_t>::max();
+static uint8_t best_num_c = std::numeric_limits<uint8_t>::max();
 static bool keep_searching;
 
 void runLoop(int i){
     int k = active_dims[i];
     for(c[k] = c_min[k]; c[k] <= c_max[k]; c[k]++){
         if(i==0){
-            for(moduland = 256; moduland <= moduland_max; moduland*=2){
-                auto col = checkCollisions();
-                if(col < collisions){
-                    collisions = col;
-                    for(int j = 0; j < dims; j++) min_ci[j] = c[active_dims[j]];
+            for(moduland = moduland_min; moduland <= moduland_max; moduland*=2){
+                auto collisions = checkCollisions();
+                const uint8_t num_c = checkNonzeroCoeffs();
+
+                if(collisions < best_collisions ||
+                   (collisions == best_collisions && (moduland < best_moduland ||
+                   (moduland == best_moduland && num_c < best_num_c)))){
+                    best_collisions = collisions;
+                    best_moduland = moduland;
+                    best_num_c = num_c;
+                    for(int j = 0; j < dims; j++) best_ci[j] = c[active_dims[j]];
                     keep_searching = true;
+
+                    std::cout << "Collisions: " << best_collisions << ", Non-zero coeffs: " << (int)num_c
+                              << ", Moduland: " << moduland << std::endl;
+
+                    for(int p = 0; p < digits; p++) std::cout << c[p] << ", ";
+                    std::cout << std::endl;
                 }
             }
         }else{
@@ -219,7 +242,7 @@ void runLoop(int i){
     }
 }
 
-int search(){
+void search(){
     keep_searching = true;
 
     while(keep_searching){
@@ -236,31 +259,38 @@ int search(){
                 }
             }
 
-            for(int j = 0; j < dims; j++){
-                int k = active_dims[j];
-                min_ci[k] = rand() % (c_max[k]-c_min[k]) + c_min[k];
-            }
+            for(int j = 0; j < dims; j++) best_ci[j] = c[active_dims[j]];
 
             runLoop(dims-1);
 
-            for(int j = 0; j < dims; j++) c[active_dims[j]] = min_ci[j];
+            for(int j = 0; j < dims; j++) c[active_dims[j]] = best_ci[j];
         }
     }
-
-    return collisions;
 }
 
 #include <chrono>
 using namespace std::chrono;
 
 int main(){
+    //Randomly initialize
+    for(int i = 0; i < digits; i++) c[i] = rand() % (c_max[i]-c_min[i]) + c_min[i];
+    moduland = moduland_min;
+    best_collisions = checkCollisions();
+    best_moduland = moduland;
+    best_num_c = checkNonzeroCoeffs();
+
+    //Search
     auto start = high_resolution_clock::now();
-    int collisions = search();
+    for(int i = 0; i < num_iter; i++) search();
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<seconds>(stop - start);
 
-    std::cout << "Best result: " << collisions << " collisions\n"
-                 "Runtime: " << duration.count() << "s" << std::endl;
+    //Report
+    std::cout << "\nBest result: " << best_collisions << " collisions\n"
+                 "Runtime: " << duration.count() << "s\n"
+                 "Coeffs: {";
+    for(int i = 0; i < digits; i++) std::cout << c[i] << ", ";
+    std::cout << "}\nModuland: " << best_moduland << std::endl;
 
     return 0;
 }
