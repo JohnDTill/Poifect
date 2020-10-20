@@ -202,7 +202,7 @@ static int countCollisions(){
     uint8_t i = num_keys;
     while(i --> 0){
         #ifdef CHECK_HASHES_SPARSE
-        hashes[i] = hash(keys[i]) % moduland;
+        hashes[i] = hash(keys[i]);
 
         uint8_t j = num_keys;
         while(j --> i+1){
