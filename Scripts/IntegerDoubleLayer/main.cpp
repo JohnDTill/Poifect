@@ -6,11 +6,15 @@
 #include <vector>
 typedef uint32_t Key;
 typedef uint16_t Hash;
-typedef uint16_t Moduland;
 
 static constexpr int num_keys = 125;
 static constexpr int num_intd = 32;
 static constexpr int num_final = 128;
+
+static constexpr Hash first_seed = 1;
+static Hash local_seeds[num_intd];
+static constexpr Hash seed_min = 0;
+static constexpr Hash seed_max = std::numeric_limits<Hash>::max() - 1;
 
 static constexpr Key keys[num_keys] = {8501 ,
                               64 ,
@@ -138,27 +142,21 @@ static constexpr Key keys[num_keys] = {8501 ,
                               8921 ,
                               8920};
 
-static constexpr Hash seed_min = 0;
-static constexpr Hash seed_max = std::numeric_limits<uint16_t>::max() - 1;
-
-static Hash seed = 403;
-static Hash local_seeds[num_intd];
-
-static Hash hashLayer(Hash x, Hash coeff) {
+static Hash hashLayer(Key x, Hash coeff) noexcept{
     x = ((x >> 8) ^ x) * coeff;
     x = (x >> 8) ^ x;
     return x;
 }
 
-static bool compare(const std::vector<Key>& a, const std::vector<Key>& b){
+static bool compare(const std::vector<Key>& a, const std::vector<Key>& b) noexcept{
     return a.size() > b.size();
 }
 
-static void hashAll(){
+static void hashAll() noexcept{
     std::array<std::vector<Key>, num_intd> intermediate_table;
 
     for(const Key& key : keys){
-        const Hash hash = hashLayer(key, seed) % num_intd;
+        const Hash hash = hashLayer(key, first_seed) % num_intd;
         intermediate_table[hash].push_back(key);
     }
 
