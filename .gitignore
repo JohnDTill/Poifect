@@ -1,3 +1,6 @@
+poifect_*.h
+*.backup
+
 #Qt
 *.pro.user*
 build*

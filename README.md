@@ -1,13 +1,15 @@
 ## Poifect
 
-Perfect hash generator - brute force search to find a good hash function.
+Perfect hash generator - search to find a good hash function.
 
 ![screenshot](screenshot.png?raw=true "Poifect")
+
+[Try it in your browser!](https://johndtill.github.io/Poifect/)
 
 ## Critical Reviews
 
 **★★★★★**<br>
-"*Poignant and deep. The search for a minimal perfect hash function is a compelling allegory for coming of age. Poifect is a defining generational masterpiece.*"<br>
+"*Poignant and deep. The search for a perfect hash function is a compelling allegory for coming of age. Poifect is a defining generational masterpiece.*"<br>
 **-The Wallstreet Journal**
 
 **★☆☆☆☆**<br>
