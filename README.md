@@ -1,6 +1,6 @@
 ## Poifect
 
-Perfect hash generator - search to find a good hash function.
+Perfect hash generator - search to find a good hash function. There are two header files meant to be included in various C++ projects, a driver to verify correct behavior on several test maps, and an example GUI program in Qt.
 
 ![screenshot](screenshot.png?raw=true "Poifect")
 
