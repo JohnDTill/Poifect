@@ -1,6 +1,6 @@
 ## Poifect
 
-Perfect hash generator - search to find a good hash function.
+Perfect hash generator - search to find a good hash function. There are two header files meant to be included in various C++ projects, a driver to verify correct behavior on several test maps, and an example GUI program in Qt.
 
 ![screenshot](screenshot.png?raw=true "Poifect")
 
@@ -28,4 +28,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Porpoise image by [Clker-Free-Vector-Images](https://pixabay.com/users/Clker-Free-Vector-Images-3736) from [Pixabay](https://pixabay.com).
 
-![Poirpose](src/dolphin-310228.svg?raw=true "A Poifect Porpoise")
+![Poirpose](example/dolphin-310228.svg?raw=true "A Poifect Porpoise")
