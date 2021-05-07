@@ -41,47 +41,50 @@ static uint32_t hash(const std::string& key){
 
 std::string hashStr(uint32_t){
     std::string str =
-"static inline uint32_t hash(uint32_t a){\n";
+"    static inline constexpr uint32_t hash(uint32_t a) noexcept{\n";
     if(c[0] && c[1])
-        str += "    a =  (a ^ " + std::to_string(c[0]) + ") ^ (a >> " + std::to_string(c[1]) + ");\n";
+        str += "        a =  (a ^ " + std::to_string(c[0]) + ") ^ (a >> " + std::to_string(c[1]) + ");\n";
     else if(c[0])
-        str += "    a ^= a ^ " + std::to_string(c[0]) + ";\n";
+        str += "        a ^= a ^ " + std::to_string(c[0]) + ";\n";
     else if(c[1])
-        str += "    a ^= a >> " + std::to_string(c[1]) + ";\n";
+        str += "        a ^= a >> " + std::to_string(c[1]) + ";\n";
 
-    if(c[2]) str += "    a += a << " + std::to_string(c[2]) + ";\n";
-    if(c[3]) str += "    a ^= a >> " + std::to_string(c[3]) + ";\n";
-    if(c[4]) str += "    a *= " + std::to_string(c[4]+1) + ";\n";
-    if(c[5]) str += "    a ^= a >> " + std::to_string(c[5]) + ";\n";
+    if(c[2]) str += "        a += a << " + std::to_string(c[2]) + ";\n";
+    if(c[3]) str += "        a ^= a >> " + std::to_string(c[3]) + ";\n";
+    if(c[4]) str += "        a *= " + std::to_string(c[4]+1) + ";\n";
+    if(c[5]) str += "        a ^= a >> " + std::to_string(c[5]) + ";\n";
 
-    str += "    return a;\n"
-           "}\n";
+    str += "        return a;\n"
+           "    }\n";
 
     return str;
 }
 
-std::string hashStr(uint32_t, size_t n, const std::string& default_value){
+std::string hashStr(uint32_t, size_t n, const std::string& default_value, std::string map_name, std::string key_type){
     return hashStr(uint32_t()) +
-        "std::string lookup(const size_t& key){\n"
+        "};\n"
+        "\n"
+        "constexpr std::string_view " + map_name + "::lookup(const " + key_type + "& key) noexcept{\n"
         "    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
-        "    return keys[h] == key ? vals[h] : \"" + default_value + "\";\n"
+        "    return keys[h] == key ? std::string_view(&flat_vals[val_start[h]], val_size[h]) : \"" + default_value + "\";\n"
         "}\n\n";
 }
 
-std::string hashStr(const std::string&, size_t n, const std::string& default_value){
+std::string hashStr(const std::string&, size_t n, const std::string& default_value, std::string map_name, std::string key_type){
     return hashStr(uint32_t()) + "\n"
-"static inline uint32_t hash(const std::string& key){\n"
-"    uint32_t h = 0;\n"
+"    static inline uint32_t hash(const " + key_type + "& key) noexcept{\n"
+"        uint32_t h = 0;\n"
 "\n"
-"    for(const char& ch : key)\n"
-"        h ^= hash(ch);\n"
+"        for(size_t i = key.size()-1; i < std::numeric_limits<size_t>::max(); i--)\n"
+"            h ^= hash(key[i]);\n"
 "\n"
-"    return h;\n"
-"}\n"
+"        return h;\n"
+"    }\n"
+"};\n"
 "\n"
-"std::string lookup(const std::string& key){\n"
+"std::string_view " + map_name + "::lookup(const " + key_type + "& key) noexcept{\n"
 "    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
-"    return checkBin(key, h) ? vals[h] : \"" + default_value + "\";\n"
+"    return checkBin(key, h) ? std::string_view(&flat_vals[val_start[h]], val_size[h]) : \"" + default_value + "\";\n"
 "}\n\n";
 }
 
@@ -103,7 +106,7 @@ template<typename KeyType>
 bool hashSearch(const std::vector<KeyType>& keys,
                 const std::vector<std::string>& vals,
                 std::string& hash_str,
-                std::string map_name = "",
+                std::string map_name = "PoifectMap",
                 std::string default_value = "",
                 uint8_t expansion = 1,
                 uint8_t reduction = 1){
@@ -141,9 +144,8 @@ bool hashSearch(const std::vector<KeyType>& keys,
 
     hash_str = getCommonCodeGen(keys, vals, mapping, n, map_name);
 
-    hash_str += hashStr(keys[0], n, default_value);
+    hash_str += hashStr(keys[0], n, default_value, map_name, typeStr(keys[0]));
 
-    if(!map_name.empty()) hash_str += "}\n";
     std::string upper_name = map_name;
     std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);
     hash_str += "#endif // POIFECT_" + upper_name + "_H\n";

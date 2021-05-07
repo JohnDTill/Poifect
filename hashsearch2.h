@@ -25,40 +25,42 @@ uint32_t hash2(size_t x, const SeedType& coeff){
     return x;
 }
 
-std::string hashStr2(const std::string&, uint16_t seed, size_t n1, size_t n2, const std::string& default_value){
+std::string hashStr2(const std::string&, uint16_t seed, size_t n1, size_t n2, const std::string& default_value, std::string map_name, std::string key_type){
     return
-        "static inline uint32_t hash(const std::string& key, const uint32_t& coeff){\n"
-        "    uint32_t h = 0;\n"
+        "    static inline uint32_t hash(const std::string& key, const uint32_t& coeff) noexcept{\n"
+        "        uint32_t h = 0;\n"
         "\n"
-        "    for(const char& ch : key)\n"
-        "        h = h*coeff + ch;\n"
+        "        for(size_t i = 0; i < key.size(); i++)\n"
+        "            h = h*coeff + key[i];\n"
         "\n"
-        "    return h;\n"
-        "}\n"
+        "        return h;\n"
+        "    }\n"
+        "};\n"
         "\n"
-        "std::string lookup(const std::string& key){\n"
+        "std::string_view " + map_name + "::lookup(const " + key_type + "& key) noexcept{\n"
         "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
         "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
         "    const uint32_t& s1 = seeds[h1];\n"
-        "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n"
-        "    return checkBin(key, bin) ? vals[bin] : \"" + default_value + "\";\n"
+        "    const size_t bin = hash(key, s1) & " + std::to_string(n2) + ";\n"
+        "    return checkBin(key, bin) ? std::string_view(&flat_vals[val_start[bin]], val_size[bin]) : \"" + default_value + "\";\n"
         "}\n\n";
 }
 
-std::string hashStr2(size_t, uint16_t seed, size_t n1, size_t n2, const std::string& default_value){
+std::string hashStr2(size_t, uint16_t seed, size_t n1, size_t n2, const std::string& default_value, std::string map_name, std::string key_type){
     return
-        "static inline uint32_t hash(size_t x, const uint32_t& coeff){\n"
-        "    x = ((x >> 7) ^ x) * coeff;\n"
-        "    x = (x >> 7) ^ x;\n"
-        "    return x;\n"
-        "}\n"
+        "    static inline constexpr uint32_t hash(size_t x, const uint32_t& coeff) noexcept{\n"
+        "        x = ((x >> 7) ^ x) * coeff;\n"
+        "        x = (x >> 7) ^ x;\n"
+        "        return x;\n"
+        "    }\n"
+        "};\n"
         "\n"
-        "std::string lookup(const size_t& key){\n"
+        "constexpr std::string_view " + map_name + "::lookup(const " + key_type + "& key) noexcept{\n"
         "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
         "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
         "    const uint32_t& s1 = seeds[h1];\n"
         "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n"
-        "    return keys[bin] == key ? vals[bin] : \"" + default_value + "\";\n"
+        "    return keys[bin] == key ? std::string_view(&flat_vals[val_start[bin]], val_size[bin]) : \"" + default_value + "\";\n"
         "}\n\n";
 }
 
@@ -110,7 +112,7 @@ void writeHash2(const std::vector<KeyType>& keys,
                const std::vector<std::string>& vals,
                std::vector<Bin<KeyType>> layer1,
                std::string& hash_str,
-               const std::string& map_name,
+               std::string map_name,
                const std::string& default_value){
 
     struct LayerSort{
@@ -131,19 +133,18 @@ void writeHash2(const std::vector<KeyType>& keys,
 
     hash_str = getCommonCodeGen(keys, vals, mapping, n2, map_name);
 
-    hash_str += "static constexpr std::array<uint16_t, " + std::to_string(n1+1) + "> seeds {\n    ";
+    hash_str += "    static constexpr std::array<uint16_t, " + std::to_string(n1+1) + "> seeds {\n        ";
 
     size_t i = 0;
     for(const auto& bin : layer1){
-        if(i && i%entries_per_row==0) hash_str += "\n    ";
+        if(i && i%entries_per_row==0) hash_str += "\n        ";
         i++;
         hash_str += std::to_string(bin.seed) + ",";
     }
-    hash_str += "\n};\n\n";
+    hash_str += "\n    };\n\n";
 
-    hash_str += hashStr2(keys[0], seed, n1, n2, default_value);
+    hash_str += hashStr2(keys[0], seed, n1, n2, default_value, map_name, typeStr(keys[0]));
 
-    if(!map_name.empty()) hash_str += "}\n";
     std::string upper_name = map_name;
     std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);
     hash_str += "#endif // POIFECT_" + upper_name + "_H\n";
@@ -156,7 +157,7 @@ static bool testSeed(const std::vector<KeyType>& keys,
                      size_t n2,
                      const std::vector<std::string>& vals,
                      std::string& hash_str,
-                     const std::string& map_name,
+                     std::string map_name,
                      const std::string& default_value){
     std::vector<Bin<KeyType>> layer1(n1+1);
     for(size_t i = 0; i <= n1; i++) layer1[i].generating_hash = i;
@@ -191,7 +192,7 @@ template<typename KeyType>
 bool hashSearch2(const std::vector<KeyType>& keys,
                  const std::vector<std::string>& vals,
                  std::string& hash_str,
-                 std::string map_name = "",
+                 std::string map_name = "PoifectMap",
                  std::string default_value = "",
                  uint8_t expansion = 1,
                  uint8_t reduction = 1){

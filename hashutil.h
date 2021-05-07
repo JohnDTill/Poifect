@@ -41,9 +41,9 @@ void writeKeys(std::string& str,
         sze.push_back(key.size());
     }
 
-    str += "static constexpr std::array<char, " + std::to_string(num_chars) + "> flat_keys {\n";
+    str += "    static constexpr std::array<char, " + std::to_string(num_chars) + "> flat_keys {\n";
     for(const std::string& key : keys){
-        for(uint8_t i = 0; i < 4; i++) str.push_back(' ');
+        for(uint8_t i = 0; i < 8; i++) str.push_back(' ');
         for(const char& ch : key){
             str.push_back('\'');
             str.push_back(ch);
@@ -52,36 +52,36 @@ void writeKeys(std::string& str,
         }
         str.push_back('\n');
     }
-    str += "};\n\n";
+    str += "    };\n\n";
 
-    str += "static constexpr std::array<size_t, " + std::to_string(n+1) + "> key_start {\n    ";
+    str += "    static constexpr std::array<size_t, " + std::to_string(n+1) + "> key_start {\n        ";
     size_t i = 0;
     for(const int& val : mapping){
-        if(i && i%entries_per_row == 0) str += "\n    ";
+        if(i && i%entries_per_row == 0) str += "\n        ";
         i++;
         if(val == -1) str += "0,";
         else str += std::to_string(start[val]) + ",";
     }
-    str += "\n};\n\n";
+    str += "\n    };\n\n";
 
-    str += "static constexpr std::array<size_t, " + std::to_string(n+1) + "> key_size {\n    ";
+    str += "    static constexpr std::array<size_t, " + std::to_string(n+1) + "> key_size {\n        ";
     i = 0;
     for(const int& val : mapping){
-        if(i && i%entries_per_row == 0) str += "\n    ";
+        if(i && i%entries_per_row == 0) str += "\n        ";
         i++;
         if(val == -1) str += "0,";
         else str += std::to_string(sze[val]) + ",";
     }
-    str += "\n};\n\n";
+    str += "\n    };\n\n";
 
-    str += "static inline bool checkBin(const std::string& key, size_t bin){\n"
-           "    const auto& size = key_size[bin];\n"
-           "    if(size != key.size()) return false;\n"
-           "    const auto& start = key_start[bin];\n"
-           "    for(size_t i = size-1; i < std::numeric_limits<size_t>::max(); i--)\n"
-           "        if(key[i] != flat_keys[start+i]) return false;\n"
-           "    return true;\n"
-           "}\n\n";
+    str += "    static inline bool checkBin(const std::string& key, size_t bin) noexcept{\n"
+           "        const auto& size = key_size[bin];\n"
+           "        if(size != key.size()) return false;\n"
+           "        const auto& start = key_start[bin];\n"
+           "        for(size_t i = size-1; i < std::numeric_limits<size_t>::max(); i--)\n"
+           "            if(key[i] != flat_keys[start+i]) return false;\n"
+           "        return true;\n"
+           "    }\n\n";
 }
 
 template<typename KeyType>
@@ -90,16 +90,16 @@ void writeKeys(std::string& str,
                std::string key_type,
                const std::vector<int>& mapping,
                size_t n){
-    str += "static std::array<" + key_type + ", " + std::to_string(n+1) + "> keys {\n    ";
+    str += "    static constexpr std::array<" + key_type + ", " + std::to_string(n+1) + "> keys {\n        ";
 
     size_t i = 0;
     for(const int& val : mapping){
-        if(i && i%entries_per_row==0) str += "\n    ";
+        if(i && i%entries_per_row==0) str += "\n        ";
         i++;
         if(val == -1) str += "0,";
         else    str += std::to_string(keys[val]) + ",";
     }
-    str += "\n};\n\n";
+    str += "\n    };\n\n";
 }
 
 void writeKeys(std::string& str, const std::vector<uint64_t>& keys, const std::vector<int>& mapping, size_t n){
@@ -116,35 +116,6 @@ void writeKeys(std::string& str, const std::vector<uint16_t>& keys, const std::v
 
 void writeKeys(std::string& str, const std::vector<uint8_t>& keys, const std::vector<int>& mapping, size_t n){
     writeKeys<uint8_t>(str, keys, "uint8_t", mapping, n);
-}
-
-template<typename KeyType>
-std::string getCommonCodeGen(const std::vector<KeyType>& keys,
-                             const std::vector<std::string> vals,
-                             const std::vector<int>& mapping,
-                             size_t n,
-                             const std::string& map_name){
-    std::string upper_name = map_name;
-    std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);
-
-    std::string str = "//CODEGEN FILE\n"
-                      "#ifndef POIFECT_" + upper_name + "_H\n"
-                      "#define POIFECT_" + upper_name + "_H\n"
-                      "#include <array>\n"
-                      "#include <string>\n\n";
-
-    if(!map_name.empty()) str += "namespace " + map_name + "{\n\n";
-
-    writeKeys(str, keys, mapping, n);
-
-    str += "static std::array<std::string, " + std::to_string(n+1) + "> vals {\n";
-    for(const int& val : mapping)
-        if(val == -1) str += "    \"\",\n";
-        else    str += "    \"" + vals[val] + "\",\n";
-    str += "};\n"
-    "\n";
-
-    return str;
 }
 
 std::string typeStr(const std::string&){
@@ -165,6 +136,72 @@ std::string typeStr(uint16_t){
 
 std::string typeStr(uint8_t){
     return "uint8_t";
+}
+
+template<typename KeyType>
+std::string getCommonCodeGen(const std::vector<KeyType>& keys,
+                             const std::vector<std::string> vals,
+                             const std::vector<int>& mapping,
+                             size_t n,
+                             std::string map_name){
+    std::string upper_name = map_name;
+    std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);
+
+    std::string str = "//CODEGEN FILE\n"
+                      "#ifndef POIFECT_" + upper_name + "_H\n"
+                      "#define POIFECT_" + upper_name + "_H\n"
+                      "#include <array>\n"
+                      "#include <limits>\n"
+                      "#include <string>\n\n";
+
+    str += "class " + map_name + " final{\n"
+    "public:\n"
+    "    static " + (typeStr(keys[0])!="std::string" ? "constexpr " : "")
+            + "std::string_view lookup(const " + typeStr(keys[0]) + "& key) noexcept;\n"
+    "\n"
+    "private:\n";
+
+    writeKeys(str, keys, mapping, n);
+
+    size_t num_chars = 0;
+    std::vector<size_t> sze;
+    std::vector<size_t> start;
+
+    for(const std::string& val : vals){
+        start.push_back(num_chars);
+        num_chars += val.size();
+        sze.push_back(val.size());
+    }
+
+    str += "    static constexpr char flat_vals[" + std::to_string(num_chars+1) + "] = ";
+    for(const std::string& val : vals){
+        str.push_back('\n');
+        for(uint8_t i = 0; i < 8; i++) str.push_back(' ');
+        str += '"' + val + '"';
+    }
+    str += ";\n\n";
+
+    str += "    static constexpr std::array<size_t, " + std::to_string(n+1) + "> val_start {\n        ";
+    size_t i = 0;
+    for(const int& val : mapping){
+        if(i && i%entries_per_row == 0) str += "\n        ";
+        i++;
+        if(val == -1) str += "0,";
+        else str += std::to_string(start[val]) + ",";
+    }
+    str += "\n    };\n\n";
+
+    str += "    static constexpr std::array<size_t, " + std::to_string(n+1) + "> val_size {\n        ";
+    i = 0;
+    for(const int& val : mapping){
+        if(i && i%entries_per_row == 0) str += "\n        ";
+        i++;
+        if(val == -1) str += "0,";
+        else str += std::to_string(sze[val]) + ",";
+    }
+    str += "\n    };\n\n";
+
+    return str;
 }
 
 #endif // HASHUTIL_H
