@@ -97,7 +97,7 @@ static std::vector<std::string> cpp_keywords {
     "using",
     "virtual",
     "void",
-    "volatile"
+    "volatile",
     "wchar_t",
     "while",
     "xor",
@@ -319,7 +319,7 @@ int main(){
     std::string hash_str;
     bool success;
 
-    success = hashSearch2<std::string>(cpp_keywords, cpp_vals, hash_str, "CppKeywords2", "IDENTIFIER", 1, 5);
+    success = hashSearch2<std::string>(cpp_keywords, cpp_vals, hash_str, "CppKeywords2", "IDENTIFIER", 1, 4);
     assert(success);
     saveToFile(hash_str, "poifect_cppkeywords2.h");
     success = hashSearch2<std::string>(greek_keywords, greek_vals, hash_str, "GreekLetters2");

@@ -60,7 +60,15 @@ std::string hashStr(uint32_t){
     return str;
 }
 
-std::string hashStr(const std::string&){
+std::string hashStr(uint32_t, size_t n, const std::string& default_value){
+    return hashStr(uint32_t()) +
+        "std::string lookup(const size_t& key){\n"
+        "    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
+        "    return keys[h] == key ? vals[h] : \"" + default_value + "\";\n"
+        "}\n\n";
+}
+
+std::string hashStr(const std::string&, size_t n, const std::string& default_value){
     return hashStr(uint32_t()) + "\n"
 "static inline uint32_t hash(const std::string& key){\n"
 "    uint32_t h = 0;\n"
@@ -69,7 +77,12 @@ std::string hashStr(const std::string&){
 "        h ^= hash(ch);\n"
 "\n"
 "    return h;\n"
-"}\n";
+"}\n"
+"\n"
+"std::string lookup(const std::string& key){\n"
+"    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
+"    return checkBin(key, h) ? vals[h] : \"" + default_value + "\";\n"
+"}\n\n";
 }
 
 template<typename KeyType>
@@ -128,12 +141,7 @@ bool hashSearch(const std::vector<KeyType>& keys,
 
     hash_str = getCommonCodeGen(keys, vals, mapping, n, map_name);
 
-    hash_str += hashStr(keys[0]);
-
-    hash_str += "\nstd::string lookup(const " + typeStr(keys[0]) + "& key){\n"
-                "    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
-                "    return keys[h] == key ? vals[h] : \"" + default_value + "\";\n"
-                "}\n\n";
+    hash_str += hashStr(keys[0], n, default_value);
 
     if(!map_name.empty()) hash_str += "}\n";
     std::string upper_name = map_name;

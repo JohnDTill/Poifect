@@ -25,7 +25,7 @@ uint32_t hash2(size_t x, const SeedType& coeff){
     return x;
 }
 
-std::string hashStr2(const std::string&){
+std::string hashStr2(const std::string&, uint16_t seed, size_t n1, size_t n2, const std::string& default_value){
     return
         "static inline uint32_t hash(const std::string& key, const uint32_t& coeff){\n"
         "    uint32_t h = 0;\n"
@@ -34,16 +34,32 @@ std::string hashStr2(const std::string&){
         "        h = h*coeff + ch;\n"
         "\n"
         "    return h;\n"
-        "}\n";
+        "}\n"
+        "\n"
+        "std::string lookup(const std::string& key){\n"
+        "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
+        "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
+        "    const uint32_t& s1 = seeds[h1];\n"
+        "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n"
+        "    return checkBin(key, bin) ? vals[bin] : \"" + default_value + "\";\n"
+        "}\n\n";
 }
 
-std::string hashStr2(size_t){
+std::string hashStr2(size_t, uint16_t seed, size_t n1, size_t n2, const std::string& default_value){
     return
         "static inline uint32_t hash(size_t x, const uint32_t& coeff){\n"
         "    x = ((x >> 7) ^ x) * coeff;\n"
         "    x = (x >> 7) ^ x;\n"
         "    return x;\n"
-        "}\n";
+        "}\n"
+        "\n"
+        "std::string lookup(const size_t& key){\n"
+        "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
+        "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
+        "    const uint32_t& s1 = seeds[h1];\n"
+        "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n"
+        "    return keys[bin] == key ? vals[bin] : \"" + default_value + "\";\n"
+        "}\n\n";
 }
 
 template<typename KeyType>
@@ -115,21 +131,17 @@ void writeHash2(const std::vector<KeyType>& keys,
 
     hash_str = getCommonCodeGen(keys, vals, mapping, n2, map_name);
 
-    hash_str += "static constexpr std::array<uint16_t, " + std::to_string(n1+1) + "> seeds {\n";
+    hash_str += "static constexpr std::array<uint16_t, " + std::to_string(n1+1) + "> seeds {\n    ";
 
-    for(const auto& bin : layer1)
-        hash_str += "    " + std::to_string(bin.seed) + ",\n";
-    hash_str += "};\n\n";
+    size_t i = 0;
+    for(const auto& bin : layer1){
+        if(i && i%entries_per_row==0) hash_str += "\n    ";
+        i++;
+        hash_str += std::to_string(bin.seed) + ",";
+    }
+    hash_str += "\n};\n\n";
 
-    hash_str += hashStr2(keys[0]);
-
-    hash_str += "\nstd::string lookup(const " + typeStr(keys[0]) + "& key){\n"
-                "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
-                "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
-                "    const uint32_t& s1 = seeds[h1];\n"
-                "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n"
-                "    return keys[bin] == key ? vals[bin] : \"" + default_value + "\";\n"
-                "}\n\n";
+    hash_str += hashStr2(keys[0], seed, n1, n2, default_value);
 
     if(!map_name.empty()) hash_str += "}\n";
     std::string upper_name = map_name;
