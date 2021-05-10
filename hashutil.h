@@ -211,4 +211,66 @@ std::string getCommonCodeGen(const std::vector<KeyType>& keys,
     return str;
 }
 
+//This is a function I was playing around with to identify possible optimizations.
+//I love the idea of unwrapping the loop over the string, but it's not possible for every key set.
+//I'm leaving this as a note since I don't want highly specialized optimizations yet.
+#include <iostream>
+#include <unordered_set>
+void analyze(const std::vector<std::string>& keys){
+    size_t min = std::numeric_limits<size_t>::max();
+    size_t max = 0;
+
+    for(const std::string& key : keys){
+        min = std::min(key.size(), min);
+        max = std::max(key.size(), max);
+    }
+
+    if(min == max){
+        std::cout << "All keys have length " << min << ". You don't need a key map." << std::endl;
+        return;
+    }
+
+    std::unordered_set<std::string> set;
+    for(const std::string& key : keys){
+        std::string subkey = key.substr(0, min);
+        if(set.find(subkey) != set.end()) break;
+        set.insert(subkey);
+    }
+    if(set.size() == keys.size()) std::cout << "First " << min << " chars are unique" << std::endl;
+
+    set.clear();
+    for(const std::string& key : keys){
+        std::string subkey = key.substr(key.size()-min);
+        if(set.find(subkey) != set.end()) break;
+        set.insert(subkey);
+    }
+    if(set.size() == keys.size()) std::cout << "Last " << min << " chars are unique" << std::endl;
+
+    size_t low = min/2;
+    size_t high = min - low;
+    set.clear();
+    for(const std::string& key : keys){
+        std::string subkey = key.substr(0, min/2) + key.substr(key.size()-high);
+        if(set.find(subkey) != set.end()) break;
+        set.insert(subkey);
+    }
+    if(set.size() == keys.size()) std::cout << "First " << low << " with last " << high << " chars are unique" << std::endl;
+
+    set.clear();
+    for(const std::string& key : keys){
+        std::string subkey = key.substr(0, min) + "⁜" + char(key.size());
+        if(set.find(subkey) != set.end()) break;
+        set.insert(subkey);
+    }
+    if(set.size() == keys.size()) std::cout << "First " << min << " chars with size are unique" << std::endl;
+
+    set.clear();
+    for(const std::string& key : keys){
+        std::string subkey = key.substr(key.size()-min) + "⁜" + char(key.size());
+        if(set.find(subkey) != set.end()) break;
+        set.insert(subkey);
+    }
+    if(set.size() == keys.size()) std::cout << "Last " << min << " chars are unique" << std::endl;
+}
+
 #endif // HASHUTIL_H

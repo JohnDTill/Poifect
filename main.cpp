@@ -274,7 +274,7 @@ void saveToFile(const std::string& str, const std::string& filename){
     out << str;
 }
 
-#define BOOTSTRAPPED
+//#define BOOTSTRAPPED
 #ifdef BOOTSTRAPPED
 #include "poifect_adhocsymbols.h"
 #include "poifect_adhocsymbols2.h"
@@ -384,6 +384,9 @@ int main(){
     #ifdef BOOTSTRAPPED
     checkPreviouslyGeneratedResults();
     #endif
+
+    std::cout << "Analyzing greek keywords: ";
+    analyze(greek_keywords);
 
     return 0;
 }
