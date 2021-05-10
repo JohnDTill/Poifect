@@ -143,19 +143,20 @@ void MainWindow::writeHashFunction(){
 
     std::string dflt = ui->defaultEdit->text().toStdString();
     std::string name = ui->nameEdit->text().toStdString();
+    bool nonKeyLookup = !ui->keyOnlyCheckBox->isChecked();
     std::string hash_str;
     bool success;
 
     if(ui->intCheckBox->isChecked()){
         if(ui->layerCheckBox->isChecked())
-            success = hashSearch2<uint32_t>(number_keys, vals, hash_str, name, dflt, expansion, reduction);
+            success = hashSearch2<uint32_t>(number_keys, vals, hash_str, name, dflt, expansion, reduction, nonKeyLookup);
         else
-            success = hashSearch<uint32_t>(number_keys, vals, hash_str, name, dflt, expansion, reduction);
+            success = hashSearch<uint32_t>(number_keys, vals, hash_str, name, dflt, expansion, reduction, nonKeyLookup);
     }else{
         if(ui->layerCheckBox->isChecked())
-            success = hashSearch2<std::string>(keys, vals, hash_str, name, dflt, expansion, reduction);
+            success = hashSearch2<std::string>(keys, vals, hash_str, name, dflt, expansion, reduction, nonKeyLookup);
         else
-            success = hashSearch<std::string>(keys, vals, hash_str, name, dflt, expansion, reduction);
+            success = hashSearch<std::string>(keys, vals, hash_str, name, dflt, expansion, reduction, nonKeyLookup);
     }
 
     if(success){

@@ -60,18 +60,27 @@ std::string hashStr(uint32_t){
     return str;
 }
 
-std::string hashStr(uint32_t, size_t n, const std::string& default_value, std::string map_name, std::string key_type){
-    return hashStr(uint32_t()) +
+std::string hashStr(uint32_t, size_t n, const std::string& default_value, std::string map_name, std::string key_type, bool nonKeyLookups){
+    std::string hash = hashStr(uint32_t()) +
         "};\n"
         "\n"
         "constexpr std::string_view " + map_name + "::lookup(const " + key_type + "& key) noexcept{\n"
-        "    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
-        "    return keys[h] == key ? std::string_view(&flat_vals[val_start[h]], val_size[h]) : \"" + default_value + "\";\n"
-        "}\n\n";
+        "    const size_t h = hash(key) & " + std::to_string(n) + ";\n";
+    if(nonKeyLookups) hash +=
+        "    return keys[h] == key ? std::string_view(&flat_vals[val_start[h]], val_size[h]) : \"" + default_value + "\";\n";
+    else hash +=
+        "    #ifndef NDEBUG\n"
+        "    assert(keys[h] == key);\n"
+        "    #endif\n\n"
+        "    return std::string_view(&flat_vals[val_start[h]], val_size[h]);\n";
+
+    hash += "}\n\n";
+
+    return hash;
 }
 
-std::string hashStr(const std::string&, size_t n, const std::string& default_value, std::string map_name, std::string key_type){
-    return hashStr(uint32_t()) + "\n"
+std::string hashStr(const std::string&, size_t n, const std::string& default_value, std::string map_name, std::string key_type, bool nonKeyLookups){
+    std::string hash = hashStr(uint32_t()) + "\n"
 "    static inline uint32_t hash(const " + key_type + "& key) noexcept{\n"
 "        uint32_t h = 0;\n"
 "\n"
@@ -83,9 +92,18 @@ std::string hashStr(const std::string&, size_t n, const std::string& default_val
 "};\n"
 "\n"
 "std::string_view " + map_name + "::lookup(const " + key_type + "& key) noexcept{\n"
-"    const size_t h = hash(key) & " + std::to_string(n) + ";\n"
-"    return checkBin(key, h) ? std::string_view(&flat_vals[val_start[h]], val_size[h]) : \"" + default_value + "\";\n"
-"}\n\n";
+"    const size_t h = hash(key) & " + std::to_string(n) + ";\n";
+    if(nonKeyLookups) hash +=
+"    return checkBin(key, h) ? std::string_view(&flat_vals[val_start[h]], val_size[h]) : \"" + default_value + "\";\n";
+    else hash +=
+"    #ifndef NDEBUG\n"
+"    assert(checkBin(key, h));\n"
+"    #endif\n\n"
+"    return std::string_view(&flat_vals[val_start[h]], val_size[h]);\n";
+
+    hash += "}\n\n";
+
+    return hash;
 }
 
 template<typename KeyType>
@@ -109,7 +127,8 @@ bool hashSearch(const std::vector<KeyType>& keys,
                 std::string map_name = "PoifectMap",
                 std::string default_value = "",
                 uint8_t expansion = 1,
-                uint8_t reduction = 1){
+                uint8_t reduction = 1,
+                bool nonKeyLookups = true){
     assert(keys.size() > 1);
     assert(!hasDuplicates(keys));
     assert(vals.size() == keys.size());
@@ -142,9 +161,9 @@ bool hashSearch(const std::vector<KeyType>& keys,
     for(size_t i = keys.size()-1; i < std::numeric_limits<size_t>::max(); i--)
         mapping[hash(keys[i])&n] = i;
 
-    hash_str = getCommonCodeGen(keys, vals, mapping, n, map_name);
+    hash_str = getCommonCodeGen(keys, vals, mapping, n, map_name, nonKeyLookups);
 
-    hash_str += hashStr(keys[0], n, default_value, map_name, typeStr(keys[0]));
+    hash_str += hashStr(keys[0], n, default_value, map_name, typeStr(keys[0]), nonKeyLookups);
 
     std::string upper_name = map_name;
     std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);

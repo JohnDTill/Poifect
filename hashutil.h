@@ -81,7 +81,7 @@ void writeKeys(std::string& str,
            "        for(size_t i = size-1; i < std::numeric_limits<size_t>::max(); i--)\n"
            "            if(key[i] != flat_keys[start+i]) return false;\n"
            "        return true;\n"
-           "    }\n\n";
+           "    }\n";
 }
 
 template<typename KeyType>
@@ -99,7 +99,7 @@ void writeKeys(std::string& str,
         if(val == -1) str += "0,";
         else    str += std::to_string(keys[val]) + ",";
     }
-    str += "\n    };\n\n";
+    str += "\n    };\n";
 }
 
 void writeKeys(std::string& str, const std::vector<uint64_t>& keys, const std::vector<int>& mapping, size_t n){
@@ -143,16 +143,20 @@ std::string getCommonCodeGen(const std::vector<KeyType>& keys,
                              const std::vector<std::string> vals,
                              const std::vector<int>& mapping,
                              size_t n,
-                             std::string map_name){
+                             std::string map_name,
+                             bool nonKeyLookups){
     std::string upper_name = map_name;
     std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);
 
     std::string str = "//CODEGEN FILE\n"
                       "#ifndef POIFECT_" + upper_name + "_H\n"
                       "#define POIFECT_" + upper_name + "_H\n"
-                      "#include <array>\n"
-                      "#include <limits>\n"
-                      "#include <string>\n\n";
+                      "#include <array>\n";
+
+    if(!nonKeyLookups) str += "#include <cassert>\n";
+
+    str += "#include <limits>\n"
+           "#include <string>\n\n";
 
     str += "class " + map_name + " final{\n"
     "public:\n"
@@ -161,7 +165,10 @@ std::string getCommonCodeGen(const std::vector<KeyType>& keys,
     "\n"
     "private:\n";
 
+    if(!nonKeyLookups) str += "    #ifndef NDEBUG\n";
     writeKeys(str, keys, mapping, n);
+    if(!nonKeyLookups) str += "    #endif\n";
+    str += "\n";
 
     size_t num_chars = 0;
     std::vector<size_t> sze;

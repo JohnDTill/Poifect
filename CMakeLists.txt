@@ -12,6 +12,7 @@ add_executable(HashSearch
     hashutil.h
     hashsearch.h
     hashsearch2.h
+    hashbenchmark.h
     #poifect_adhocsymbols.h
     #poifect_adhocsymbols2.h
     #poifect_cppkeywords.h

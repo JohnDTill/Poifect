@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "hashbenchmark.h"
 #include "hashsearch.h"
 #include "hashsearch2.h"
 
@@ -273,12 +274,18 @@ void saveToFile(const std::string& str, const std::string& filename){
     out << str;
 }
 
+#define BOOTSTRAPPED
+#ifdef BOOTSTRAPPED
 #include "poifect_adhocsymbols.h"
 #include "poifect_adhocsymbols2.h"
 #include "poifect_cppkeywords.h"
 #include "poifect_cppkeywords2.h"
 #include "poifect_greekletters.h"
 #include "poifect_greekletters2.h"
+
+#define NDEBUG
+#include "poifect_adhocsymbols_keyonly.h"
+#include "poifect_adhocsymbols2_keyonly.h"
 
 void checkPreviouslyGeneratedResults(){
     //This tests the previously generated results
@@ -312,8 +319,38 @@ void checkPreviouslyGeneratedResults(){
         assert(AdhocSymbols2::lookup(symbols[i]) == symbol_vals[i]);
     }
 
-    std::cout << "TESTS SUCCESSFUL" << std::endl;
+    std::cout << "TESTS SUCCESSFUL\n" << std::endl;
+
+    std::cout << "CppKeyword keys: ";
+    runBenchmark<CppKeywords>(cpp_keywords);
+    std::cout << "CppKeyword non-keys: ";
+    runBenchmark<CppKeywords>(greek_keywords);
+
+    std::cout << "CppKeyword2 keys: ";
+    runBenchmark<CppKeywords2>(cpp_keywords);
+    std::cout << "CppKeyword2 non-keys: ";
+    runBenchmark<CppKeywords2>(greek_keywords);
+
+    std::cout << "GreekLetters keys: ";
+    runBenchmark<GreekLetters>(greek_keywords);
+    std::cout << "GreekLetters non-keys: ";
+    runBenchmark<GreekLetters>(cpp_keywords);
+
+    std::cout << "GreekLetters2 keys: ";
+    runBenchmark<GreekLetters2>(greek_keywords);
+    std::cout << "GreekLetters2 non-keys: ";
+    runBenchmark<GreekLetters2>(cpp_keywords);
+
+    std::cout << "AdhocSymbol keys: ";
+    runBenchmark<AdhocSymbols>(symbols);
+    std::cout << "AdhocSymbol2 keys: ";
+    runBenchmark<AdhocSymbols2>(symbols);
+    std::cout << "AdhocSymbol keys only: ";
+    runBenchmark<AdhocSymbolsKeyOnly>(symbols);
+    std::cout << "AdhocSymbol2 keys only: ";
+    runBenchmark<AdhocSymbols2KeyOnly>(symbols);
 }
+#endif
 
 int main(){
     std::string hash_str;
@@ -328,6 +365,9 @@ int main(){
     success = hashSearch2<uint16_t>(symbols, symbol_vals, hash_str, "AdhocSymbols2", "", 1, 6);
     assert(success);
     saveToFile(hash_str, "poifect_adhocsymbols2.h");
+    success = hashSearch2<uint16_t>(symbols, symbol_vals, hash_str, "AdhocSymbols2KeyOnly", "", 1, 6, false);
+    assert(success);
+    saveToFile(hash_str, "poifect_adhocsymbols2_keyonly.h");
     success = hashSearch<std::string>(cpp_keywords, cpp_vals, hash_str, "CppKeywords", "IDENTIFIER", 3);
     assert(success);
     saveToFile(hash_str, "poifect_cppkeywords.h");
@@ -337,8 +377,13 @@ int main(){
     success = hashSearch<uint16_t>(symbols, symbol_vals, hash_str, "AdhocSymbols");
     assert(success);
     saveToFile(hash_str, "poifect_adhocsymbols.h");
+    success = hashSearch<uint16_t>(symbols, symbol_vals, hash_str, "AdhocSymbolsKeyOnly", "", 1, 1, false);
+    assert(success);
+    saveToFile(hash_str, "poifect_adhocsymbols_keyonly.h");
 
+    #ifdef BOOTSTRAPPED
     checkPreviouslyGeneratedResults();
+    #endif
 
     return 0;
 }

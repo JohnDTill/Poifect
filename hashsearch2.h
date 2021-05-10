@@ -25,8 +25,8 @@ uint32_t hash2(size_t x, const SeedType& coeff){
     return x;
 }
 
-std::string hashStr2(const std::string&, uint16_t seed, size_t n1, size_t n2, const std::string& default_value, std::string map_name, std::string key_type){
-    return
+std::string hashStr2(const std::string&, uint16_t seed, size_t n1, size_t n2, const std::string& default_value, std::string map_name, std::string key_type, bool nonKeyLookups){
+    std::string hash =
         "    static inline uint32_t hash(const std::string& key, const uint32_t& coeff) noexcept{\n"
         "        uint32_t h = 0;\n"
         "\n"
@@ -41,13 +41,22 @@ std::string hashStr2(const std::string&, uint16_t seed, size_t n1, size_t n2, co
         "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
         "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
         "    const uint32_t& s1 = seeds[h1];\n"
-        "    const size_t bin = hash(key, s1) & " + std::to_string(n2) + ";\n"
-        "    return checkBin(key, bin) ? std::string_view(&flat_vals[val_start[bin]], val_size[bin]) : \"" + default_value + "\";\n"
-        "}\n\n";
+        "    const size_t bin = hash(key, s1) & " + std::to_string(n2) + ";\n";
+    if(nonKeyLookups) hash +=
+        "    return checkBin(key, bin) ? std::string_view(&flat_vals[val_start[bin]], val_size[bin]) : \"" + default_value + "\";\n";
+    else hash +=
+        "    #ifndef NDEBUG\n"
+        "    assert(checkBin(key, bin));\n"
+        "    #endif\n\n"
+        "    return std::string_view(&flat_vals[val_start[bin]], val_size[bin]);\n";
+
+    hash += "}\n\n";
+
+    return hash;
 }
 
-std::string hashStr2(size_t, uint16_t seed, size_t n1, size_t n2, const std::string& default_value, std::string map_name, std::string key_type){
-    return
+std::string hashStr2(size_t, uint16_t seed, size_t n1, size_t n2, const std::string& default_value, std::string map_name, std::string key_type, bool nonKeyLookups){
+    std::string hash =
         "    static inline constexpr uint32_t hash(size_t x, const uint32_t& coeff) noexcept{\n"
         "        x = ((x >> 7) ^ x) * coeff;\n"
         "        x = (x >> 7) ^ x;\n"
@@ -59,9 +68,18 @@ std::string hashStr2(size_t, uint16_t seed, size_t n1, size_t n2, const std::str
         "    constexpr uint32_t s0 = " + std::to_string(seed) + ";\n"
         "    const size_t h1 = hash(key, s0) & " + std::to_string(n1) + ";\n"
         "    const uint32_t& s1 = seeds[h1];\n"
-        "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n"
-        "    return keys[bin] == key ? std::string_view(&flat_vals[val_start[bin]], val_size[bin]) : \"" + default_value + "\";\n"
-        "}\n\n";
+        "    const size_t bin = hash(key,s1) & " + std::to_string(n2) + ";\n";
+    if(nonKeyLookups) hash +=
+        "    return keys[bin] == key ? std::string_view(&flat_vals[val_start[bin]], val_size[bin]) : \"" + default_value + "\";\n";
+    else hash +=
+        "    #ifndef NDEBUG\n"
+        "    assert(keys[bin] == key);\n"
+        "    #endif\n\n"
+        "    return std::string_view(&flat_vals[val_start[bin]], val_size[bin]);\n";
+
+    hash += "}\n\n";
+
+    return hash;
 }
 
 template<typename KeyType>
@@ -113,7 +131,8 @@ void writeHash2(const std::vector<KeyType>& keys,
                std::vector<Bin<KeyType>> layer1,
                std::string& hash_str,
                std::string map_name,
-               const std::string& default_value){
+               const std::string& default_value,
+               bool nonKeyLookups){
 
     struct LayerSort{
         inline bool operator() (const Bin<KeyType>& a, const Bin<KeyType>& b){
@@ -131,7 +150,7 @@ void writeHash2(const std::vector<KeyType>& keys,
         mapping[final] = i;
     }
 
-    hash_str = getCommonCodeGen(keys, vals, mapping, n2, map_name);
+    hash_str = getCommonCodeGen(keys, vals, mapping, n2, map_name, nonKeyLookups);
 
     hash_str += "    static constexpr std::array<uint16_t, " + std::to_string(n1+1) + "> seeds {\n        ";
 
@@ -143,7 +162,7 @@ void writeHash2(const std::vector<KeyType>& keys,
     }
     hash_str += "\n    };\n\n";
 
-    hash_str += hashStr2(keys[0], seed, n1, n2, default_value, map_name, typeStr(keys[0]));
+    hash_str += hashStr2(keys[0], seed, n1, n2, default_value, map_name, typeStr(keys[0]), nonKeyLookups);
 
     std::string upper_name = map_name;
     std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), toupper);
@@ -158,7 +177,8 @@ static bool testSeed(const std::vector<KeyType>& keys,
                      const std::vector<std::string>& vals,
                      std::string& hash_str,
                      std::string map_name,
-                     const std::string& default_value){
+                     const std::string& default_value,
+                     bool nonKeyLookups){
     std::vector<Bin<KeyType>> layer1(n1+1);
     for(size_t i = 0; i <= n1; i++) layer1[i].generating_hash = i;
 
@@ -184,7 +204,7 @@ static bool testSeed(const std::vector<KeyType>& keys,
     for(auto& bin : layer1)
         if(!findSeed<KeyType>(bin, n2, final_layer)) return false;
 
-    writeHash2<KeyType>(keys, seed, n1, n2, vals, layer1, hash_str, map_name, default_value);
+    writeHash2<KeyType>(keys, seed, n1, n2, vals, layer1, hash_str, map_name, default_value, nonKeyLookups);
     return true;
 }
 
@@ -195,7 +215,8 @@ bool hashSearch2(const std::vector<KeyType>& keys,
                  std::string map_name = "PoifectMap",
                  std::string default_value = "",
                  uint8_t expansion = 1,
-                 uint8_t reduction = 1){
+                 uint8_t reduction = 1,
+                 bool nonKeyLookups = true){
     assert(keys.size() > 1);
     assert(!hasDuplicates(keys));
     assert(vals.size() == keys.size());
@@ -212,7 +233,7 @@ bool hashSearch2(const std::vector<KeyType>& keys,
                                 109, 113};
 
     for(SeedType seed = 0; seed < 32; seed++)
-        if(testSeed<KeyType>(keys, primes[seed], n1, n2, vals, hash_str, map_name, default_value))
+        if(testSeed<KeyType>(keys, primes[seed], n1, n2, vals, hash_str, map_name, default_value, nonKeyLookups))
             return true;
 
     return false;
